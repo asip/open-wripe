@@ -7,7 +7,6 @@
 //= require backbone/backbone
 //= require shared/localstorage
 //= require shared/pickup_dates
-//= require shared/defer
 //= require shared/jscache
 //= require session
 
@@ -35,14 +34,16 @@ class Page {
     if (cached_data) {
       try {
         this.update(cached_data.page);
-        this.load_from_network(key).done(() => {
+        this.load_from_network(key).then(() => {
           if (cached_data.page.lock_version !== this.lock_version) {
             this.trigger('update', cached_data);
           }
         });
-        const defer = $.Deferred();
-        defer.resolve();
-        return defer.promise();
+        const promise = new Promise(
+          (resolve, reject)=> {}
+        );
+        promise.resolve();
+        return promise;
       } catch (err) {
         cache.removeItem(this.url);
         return this.load_from_network(key);
@@ -56,7 +57,7 @@ class Page {
     if ((this.key || '') !== '') {
       const original_lock_version = this.lock_version;
       const original_data = this.saved_data;
-      return this.load_from_network(this.key).done(() => {
+      return this.load_from_network(this.key).then(() => {
         if (original_lock_version !== this.lock_version) {
           this.trigger('update', {page: original_data});
         }
@@ -65,34 +66,35 @@ class Page {
   }
 
   load_from_network(key) {
-    return Deferred(defer => {
-      if (this.request) { this.request.abort(); }
+    return new Promise((resolve, reject) => {
       this.request = authorizedRequest({url: `/${key}.json`, type: 'GET'});
-      this.request.done(data => {
-        cache.setItem(data.page.key, data);
-        this.saved_data = data.page;
-        this.update(data.page);
-        defer.resolve();
-        this.request = undefined;
-      });
-      return this.request.fail((xhr, textStatus, errorThrows) => {
-        if (xhr.status === 401) { // Unauthorized
-          sign_out();
-        } else if (xhr.status === 404) {
-          defer.reject('notfound');
-        } else if (!xhr.getAllResponseHeaders()) {
-          defer.reject('aborted');
-        } else {
-          cache.removeItem(key);
-          defer.reject('error', textStatus, errorThrows);
+      this.request.then(
+        (data) => {
+          cache.setItem(data.page.key, data);
+          this.saved_data = data.page;
+          this.update(data.page);
+          resolve();
+          this.request = undefined;
+        },
+        (xhr, textStatus, errorThrows) => {
+          if (xhr.status === 401) { // Unauthorized
+            sign_out();
+          } else if (xhr.status === 404) {
+            reject('notfound');
+          } else if (!xhr.getAllResponseHeaders()) {
+            reject('aborted');
+          } else {
+            cache.removeItem(key);
+            reject('error', textStatus, errorThrows);
+          }
+          this.request = undefined;
         }
-        this.request = undefined;
-      });
+      );
     });
   }
 
   save() {
-    return Deferred(defer => {
+    return new Promise((resolve, reject) => {
       let method, url;
       if (this.key) {
         url = `/${this.key}.json`;
@@ -104,65 +106,69 @@ class Page {
 
       if (this.request) { this.request.abort(); }
       this.request = authorizedRequest({url, method, data: this.http_data()});
-      this.request.done(data => {
-        cache.setItem(data.page.key, data);
-        this.saved_data = data.page;
-        this.update(data.page);
-        this.request = undefined;
-        return defer.resolve();
-      });
-      return this.request.fail((xhr, textStatus, errorThrows) => {
-        this.request = undefined;
-        if (xhr.status === 409) { // Conflict
-          let data;
-          try { 
-            data = JSON.parse(xhr.responseText);
-          } catch (err) {
-            data = undefined;
+      this.request.then(
+        (data) => {
+          cache.setItem(data.page.key, data);
+          this.saved_data = data.page;
+          this.update(data.page);
+          this.request = undefined;
+          resolve();
+        },
+        (xhr, textStatus, errorThrows) => {
+          this.request = undefined;
+          if (xhr.status === 409) { // Conflict
+            let data;
+            try {
+              data = JSON.parse(xhr.responseText);
+            } catch (err) {
+              data = undefined;
+            }
+            reject('conflict', data);
+          } else if (!xhr.getAllResponseHeaders()) {
+            reject('aborted');
+          } else {
+            cache.removeItem(this.key);
+            reject('error', textStatus, errorThrows);
           }
-          return defer.reject('conflict', data);
-        } else if (!xhr.getAllResponseHeaders()) {
-          return defer.reject('aborted');
-        } else {
-          cache.removeItem(this.key);
-          return defer.reject('error', textStatus, errorThrows);
         }
-      });
+      );
     });
   }
 
   destroy() {
-    return Deferred(defer => {
-      const resolve = () => {
+    return new Promise((resolve, reject) => {
+      resolve = () => {
         this.key = (this.saved_data.key = undefined);
         this.title = (this.saved_data.title = ''); 
         this.body = (this.saved_data.body = '');
         this.archived = (this.saved_data.archived = false);
-        return defer.resolve();
+        return resolve();
       };
 
       cache.removeItem(this.key);
       if (this.key) {
         if (this.request) { this.request.abort(); }
         this.request = authorizedRequest({url: `/${this.key}.json`, type: 'DELETE'});
-        this.request.done(data => {
-          this.key = undefined;
-          this.lock_version = -1;
-          this.request = undefined;
-          return resolve();
-        });
-        return this.request.fail((xhr, textStatus, errorThrows) => {
-          this.request = undefined;
-          if (xhr.status === 401) { // Unauthorized
-            return sign_out();
-          } else if (!xhr.getAllResponseHeaders()) {
-            return defer.reject('aborted');
-          } else {
-            return defer.reject('error', textStatus, errorThrows);
+        this.request.then(
+          (data) => {
+            this.key = undefined;
+            this.lock_version = -1;
+            this.request = undefined;
+            resolve();
+          },
+          (xhr, textStatus, errorThrows) => {
+            this.request = undefined;
+            if (xhr.status === 401) { // Unauthorized
+              sign_out();
+            } else if (!xhr.getAllResponseHeaders()) {
+              reject('aborted');
+            } else {
+              reject('error', textStatus, errorThrows);
+            }
           }
-        });
+        );
       } else {
-        return resolve();
+        resolve();
       }
     });
   }
@@ -188,13 +194,13 @@ class Page {
   }
 
   archive() {
-    return authorizedRequest({url: `/${this.key}/archive.json`, type: 'POST'}).done(() => {
+    return authorizedRequest({url: `/${this.key}/archive.json`, type: 'POST'}).then(() => {
       this.archived = true;
     });
   }
 
   unarchive() {
-    return authorizedRequest({url: `/${this.key}/unarchive.json`, type: 'POST'}).done(() => {
+    return authorizedRequest({url: `/${this.key}/unarchive.json`, type: 'POST'}).then(() => {
       this.archived = false;
     });
   }

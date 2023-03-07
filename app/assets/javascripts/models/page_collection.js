@@ -6,7 +6,6 @@
  */
 //= require underscore/underscore
 //= require backbone/backbone
-//= require shared/defer
 //= require shared/localstorage
 //= require shared/jscache
 //= require session
@@ -28,12 +27,14 @@ class PageCollection {
       if (cached_data) {
         try {
           this._parse_data(cached_data);
-          this.load_from_network().done(data => {
+          this.load_from_network().then(data => {
             this.trigger('update');
           });
-          const defer = $.Deferred();
-          defer.resolve();
-          return defer.promise();
+          const promise = new Promise(
+            (resolve, reject) => {}
+          );
+          promise.resolve();
+          return promise;
         } catch (err) {
           cache.removeItem(this.url);
           return this.load_from_network();
@@ -47,24 +48,25 @@ class PageCollection {
   }
 
   load_from_network() {
-    return Deferred(defer => {
-      if (this.request) { this.request.abort(); }
+    return new Promise((resolve, reject) => {
       this.request = authorizedRequest({url: this.url, type: 'GET'});
-      this.request.done(data => {
-        this._parse_data(data);
-        cache.setItem(this.url, data);
-        this.request = undefined;
-        defer.resolve();
-      });
-      return this.request.fail((xhr, textStatus, errorThrows) => {
-        if (!xhr.getAllResponseHeaders()) {
-          defer.reject('aborted');
-        } else {
-          cache.removeItem(this.url);
-          defer.reject('error', textStatus, errorThrows);
+      this.request.then(
+        (data) => {
+          this._parse_data(data);
+          cache.setItem(this.url, data);
+          this.request = undefined;
+          resolve();
+        },
+        (xhr, textStatus, errorThrows) => {
+          if (!xhr.getAllResponseHeaders()) {
+            reject('aborted');
+          } else {
+            cache.removeItem(this.url);
+            reject('error', textStatus, errorThrows);
+          }
+          this.request = undefined;
         }
-        this.request = undefined;
-      });
+      );
     });
   }
 

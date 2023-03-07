@@ -51,7 +51,7 @@ const get_session = function(callback) {
         return session.autosave(false);
       });
     } else {
-      session.autosave(session_data.properties.autosave, true);
+      return session.autosave(session_data.properties.autosave, true);
     }
     return callback(data);
   });
@@ -93,35 +93,32 @@ class Session {
 
 window.session = new Session();
 
-window.authorizedRequest = function(options, defer) {
-  if (!defer) { defer = jQuery.Deferred(); }
-  options.beforeSend = function(xhr) {
-    if (session_data) {
-      return xhr.setRequestHeader('X-CSRF-Token', session_data.csrf_token);
-    }
-  };
+window.authorizedRequest = function(options) {
+  return new Promise(function(resolve, reject) {
+    options.beforeSend = function (xhr) {
+      if (session_data) {
+        xhr.setRequestHeader('X-CSRF-Token', session_data.csrf_token);
+      }
+    };
 
-  const xhr = $.ajax(options);
-  xhr.done(data => defer.resolve(data));
+    const xhr = $.ajax(options);
+    xhr.then(
+      (data) => { resolve(data) },
+      (xhr, textStatus, errorThrows) => {
+        if (xhr.status === 412) { // CSRF and retry
+          return get_session(() => {
+            authorizedRequest(this);
+          });
 
-  xhr.fail(function(xhr, textStatus, errorThrows) {
-    if (xhr.status === 412) { // CSRF and retry
-      return get_session(() => {
-        return authorizedRequest(this, defer);
-      });
-
-    } else if(xhr.status === 401) { // Unauthorized
-      return sign_out();
-
-    } else {
-      return defer.reject(xhr, textStatus, errorThrows);
-    }
+        } else if (xhr.status === 401) { // Unauthorized
+          sign_out();
+        } else {
+          reject(xhr, textStatus, errorThrows);
+        }
+      }
+    );
+    this.abort = () => xhr.abort();
   });
-
-  const promise = defer.promise();
-  promise.abort = () => xhr.abort();
-
-  return promise;
 };
 
 
@@ -179,18 +176,18 @@ $(function() {
       show_helps(data.helps, data.pages_count);
     } catch (e) {}
   }
-      // no-op
+  // no-op
 
   load_session();
 
-  $(".help-show-all").click(() => authorizedRequest({url: "/helps/reset", method: 'POST'}).done(data => show_helps(data)));
+  $(".help-show-all").click(() => authorizedRequest({url: "/helps/reset", method: 'POST'}).then(data => show_helps(data)));
 });
 
 
 window.sign_out = function() {
   localStorage.clear();
   sessionStorage.clear();
-  return location.href = '/';
+  location.href = '/';
 };
 
 
@@ -201,6 +198,6 @@ window.check_auth = function(xhr, textStatus, errorThrows) {
     });
   }
   if (xhr.status === 401) { // Unauthorized
-    return sign_out();
+    sign_out();
   }
 };

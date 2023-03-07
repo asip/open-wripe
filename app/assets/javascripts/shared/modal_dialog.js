@@ -6,6 +6,7 @@
  */
 //= require underscore/underscore
 //= require backbone/backbone
+//= require shared/defer
 
 
 class ModalDialog {

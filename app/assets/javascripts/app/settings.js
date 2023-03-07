@@ -7,7 +7,6 @@
 //= require underscore/underscore
 //= require backbone/backbone
 //= require models/page
-//= require shared/defer
 //= require shared/labeled_button
 //= require shared/modal_dialog
 //= require bootstrap-switch/dist/js/bootstrap-switch
@@ -49,15 +48,19 @@ class BackupSettingsDialog extends ModalDialog {
       this.processing_el.show();
       this.turned_on_el.hide();
       this.turned_off_el.hide();
-      const defer = this.request_turn_off();
-      defer.always(data => {
+      const promise = this.request_turn_off();
+      promise.finally(data => {
         this.processing_el.hide();
       });
-      defer.done(data => {
-        this.turned_on_el.hide();
-        this.turned_off_el.show();
-      });
-      return defer.fail(check_auth);
+      promise.then(
+        (data) => {
+          this.turned_on_el.hide();
+          this.turned_off_el.show();
+        },
+        () => {
+          check_auth();
+        }
+      );
     });
   }
 
@@ -69,22 +72,26 @@ class BackupSettingsDialog extends ModalDialog {
   }
 
   update_status() {
-    const defer = authorizedRequest({url: "/settings.json"});
-    defer.done(data => {
-      this.processing_el.hide();
-      if (data.use_dropbox) {
-        this.turned_on_el.show();
-      } else {
-        this.turned_off_el.show();
+    const promise = authorizedRequest({url: "/settings.json"});
+    promise.then(
+      (data) => {
+        this.processing_el.hide();
+        if (data.use_dropbox) {
+          this.turned_on_el.show();
+        } else {
+          this.turned_off_el.show();
+        }
+      },
+      () => {
+        check_auth();
       }
-    });
-    return defer.fail(check_auth);
+    );
   }
 
   auth() {
     this.window = window.open(this.sign_in_url, 'wripe_auth');
     if (this.timer) { clearInterval(this.timer); }
-    return this.timer = setInterval(() => {
+    this.timer = setInterval(() => {
       this.check_window();
     }
     , 1000);
@@ -126,16 +133,20 @@ class EvernoteSettingsDialog extends BackupSettingsDialog {
   }
 
   update_status() {
-    const defer = authorizedRequest({url: "/settings.json"});
-    defer.done(data => {
-      this.processing_el.hide();
-      if (data.use_evernote) {
-        this.turned_on_el.show();
-      } else {
-        this.turned_off_el.show();
+    const promise = authorizedRequest({url: "/settings.json"});
+    promise.then(
+      (data) => {
+        this.processing_el.hide();
+        if (data.use_evernote) {
+          this.turned_on_el.show();
+        } else {
+          this.turned_off_el.show();
+        }
+      },
+      () => {
+        check_auth();
       }
-    });
-    return defer.fail(check_auth);
+    );
   }
 
 

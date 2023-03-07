@@ -10,7 +10,6 @@
 //= require app/panel
 //= require app/markdown_toolbar
 //= require models/page
-//= require shared/defer
 //= require shared/labeled_button
 //= require shared/modal_dialog
 //= require shared/diff
@@ -60,6 +59,7 @@ class SaveErrorDialog extends ModalDialog {
     this.prototype.el = $('#page-edit-save-error');
   }
   constructor(message) {
+    super(SaveErrorDialog)
     $('#page-edit-save-error-label-message').text(message);
   }
 }
@@ -92,7 +92,7 @@ class PageEditPanel extends AbsolutePanel {
   static initClass() {
     this.el = {
       new_tab: "#navigator-new",
-      edit_tab: "#navigator-edit",
+      edit_tab_nav: "#navigator-edit",
       navigator: "#navigator",
 
       container: "#edit-page-container",
@@ -172,15 +172,17 @@ class PageEditPanel extends AbsolutePanel {
     this.delete_button_el.click(() => {
       return (new DeletePageDialog).show().done(() => {
         if (this.page && ((this.page.key || '') !== '')) {
-          const destroy_defer = this.page.destroy();
-          destroy_defer.done(() => {
-            this.page = undefined;
-            return Backbone.history.navigate('notes', {trigger: true});
-          });
-          return destroy_defer.fail((error, mesg) => {
-            const dialog = new DeletePageErrorDialog();
-            dialog.show();
-          });
+          const destroy_promise = this.page.destroy();
+          destroy_promise.then(
+            () => {
+              this.page = undefined;
+              Backbone.history.navigate('notes', {trigger: true});
+            },
+            () => {
+              const dialog = new DeletePageErrorDialog();
+              dialog.show();
+            }
+          );
         } else {
           this.page = undefined;
           Backbone.history.navigate('notes', {trigger: true});
@@ -234,30 +236,30 @@ class PageEditPanel extends AbsolutePanel {
   }
 
   activate(page) {
-    return Deferred(defer => {
+    return new Promise((resolve, reject) => {
       const done = () => {
         this.page.on('update', old_data => {
           const form_is_changed = (old_data.page.title !== this.title_el.val()) || (old_data.page.body !== this.body_el.val());
           if (form_is_changed) {
-            return this.merge(this.page.body, old_data.page.body, this.body_el.val(), this.page.lock_version);
+            this.merge(this.page.body, old_data.page.body, this.body_el.val(), this.page.lock_version);
           } else {
             $.bootstrapGrowl("Loaded latest version", {type: 'success'});
-            return this.page_to_form();
+            this.page_to_form();
           }
         });
         if (device_type() === 'phone') {
-          $('a', this.edit_tab_el).tab('show'); 
+          $('a', this.edit_tab_el).tab('show');
         } else {
-          $('a', this.preview_tab_el).tab('show'); 
+          $('a', this.preview_tab_el).tab('show');
         }
         if (this.page.lock_version === this.lock_version) {
           // todo: merge3
         } else {
-          this.page_to_form(); 
+          this.page_to_form();
         }
         this.loading_el.hide();
         this.body_el.focus();
-        return defer.resolve();
+        resolve();
       };
 
       if (page) {
@@ -274,22 +276,24 @@ class PageEditPanel extends AbsolutePanel {
         this.page = new Page();
         this.page.key = page;
         this.load_draft();
-        const load_defer = this.page.load(page);
-        load_defer.always(() => this.loading_el.hide());
-        load_defer.done(() => done());
-        return load_defer.fail((error_type, error_message, error_object) => {
-          if (error_type === 'notfound') {
-            this.page = new Page();
-            this.page_to_form();
-            (new LoadNotFoundDialog()).show().always(() => {
-              return delay(100, () => this.body_el.focus());
-            });
-            return defer.resolve();
-          } else {
-            (new LoadErrorDialog()).show();
-            return defer.reject(error_type, error_message, error_object);
+        const load_promise = this.page.load(page);
+        load_promise.finally(() => this.loading_el.hide());
+        load_promise.then(
+          () => done(),
+          (error_type, error_message, error_object) => {
+            if (error_type === 'notfound') {
+              this.page = new Page();
+              this.page_to_form();
+              (new LoadNotFoundDialog()).show().always(() => {
+                return delay(100, () => this.body_el.focus());
+              });
+              resolve();
+            } else {
+              (new LoadErrorDialog()).show();
+              reject(error_type, error_message, error_object);
+            }
           }
-        });
+        );
       } else {
         this.page = page || new Page();
         this.load_draft();
@@ -299,7 +303,7 @@ class PageEditPanel extends AbsolutePanel {
   }
 
   deactivate() {
-    return Deferred(defer => {
+    return new Promise((resolve, reject) => {
       this.form_to_page();
       if (this.page && this.page.is_changed()) {
         const dialog = new LeaveConfirmationDialog();
@@ -308,17 +312,17 @@ class PageEditPanel extends AbsolutePanel {
           this.container_el.hide();
           this.clear_draft();
           this.navigator_el.show();
-          return defer.resolve();
+          resolve();
         });
-        return dialog_defer.fail(() => {
+        dialog_defer.fail(() => {
           delay(100, () => this.body_el.focus());
-          return defer.reject();
+          reject();
         });
       } else {
         this.container_el.hide();
         this.clear_draft();
         this.navigator_el.show();
-        return defer.resolve();
+        resolve();
       }
     });
   }
@@ -339,7 +343,7 @@ class PageEditPanel extends AbsolutePanel {
     this.save_button.label('save');
     this.preview_body_el.html('');
     this.preview_wordcount_el.html('');
-    return this.previewed_body = '';
+    this.previewed_body = '';
   }
 
   page_to_form() {
@@ -347,7 +351,7 @@ class PageEditPanel extends AbsolutePanel {
       this.title_el.val(this.page.title);
       this.body_el.val(this.page.body);
       this.lock_version = this.page.lock_version;
-      return this.preview();
+      this.preview();
     }
   }
 
@@ -356,7 +360,7 @@ class PageEditPanel extends AbsolutePanel {
       this.page.title = this.title_el.val();
       this.page.body = this.body_el.val();
       this.page.lock_version = this.lock_version;
-      return this.save_draft();
+      this.save_draft();
     }
   }
 
@@ -366,44 +370,45 @@ class PageEditPanel extends AbsolutePanel {
 
   save() {
     if (this.is_active && !ModalDialog.is_active()) {
-      return Deferred(defer => {
+      return new Promise((resolve, reject) => {
         if (this.save_button.label() === 'saving') {
-          return defer.reject();
+          reject();
         } else {
           this.save_button.label('saving');
           this.form_to_page();
-          const save_defer = this.page.save();
+          const save_promise = this.page.save();
 
-          save_defer.always(() => {
-            return this.save_button.label('save');
+          save_promise.finally(() => {
+            this.save_button.label('save');
           });
 
-          save_defer.done(() => {
-            if (this.page && (this.page.lock_version === (this.lock_version+1))) {
-              this.page.title = this.title_el.val();
-              this.page.body = this.body_el.val();
-              this.lock_version = this.page.lock_version;
-            } else {
-              this.page_to_form();
+          save_promise.then(
+            () => {
+              if (this.page && (this.page.lock_version === (this.lock_version+1))) {
+                this.page.title = this.title_el.val();
+                this.page.body = this.body_el.val();
+                this.lock_version = this.page.lock_version;
+              } else {
+                this.page_to_form();
+              }
+              Backbone.history.navigate(`${this.page.key}/edit`, {trigger: false});
+              $.bootstrapGrowl("Saved", {type: 'success'});
+              this.hide_after_save_el.empty();
+              resolve();
+              analytics.event({ev: 'Edit', ea: 'Save'});
+            },
+            (error, option1) => {
+              if (error === 'conflict') {
+                this.merge(this.body_el.val(), this.page.saved_data.body, option1.body, option1.lock_version);
+              } else {
+                const dialog = new SaveErrorDialog(option1);
+                dialog.show().always(() => {
+                  delay(100, () => this.body_el.focus());
+                });
+              }
+              reject();
             }
-            Backbone.history.navigate(`${this.page.key}/edit`, {trigger: false});
-            $.bootstrapGrowl("Saved", {type: 'success'});
-            this.hide_after_save_el.empty();
-            defer.resolve();
-            return analytics.event({ev: 'Edit', ea: 'Save'});
-          });
-
-          return save_defer.fail((error, option1) => {
-            if (error === 'conflict') {
-              this.merge(this.body_el.val(), this.page.saved_data.body, option1.body, option1.lock_version);
-            } else {
-              const dialog = new SaveErrorDialog(option1);
-              dialog.show().always(() => {
-                return delay(100, () => this.body_el.focus());
-              });
-            }
-            return defer.reject();
-          });
+          );
         }
       });
     }
@@ -414,16 +419,16 @@ class PageEditPanel extends AbsolutePanel {
     const saved_body = o.replace("\r", '').split(/\n/);
     const server_body = b.replace("\r", '').split(/\n/);
     const merged = Diff.diff3_merge(current_body, saved_body, server_body);
-    
+
     let merged_text = '';
     merged.forEach(function(block) {
       if (block.ok) {
-        return block.ok.forEach(line => merged_text += `${line}\n`);
+        block.ok.forEach(line => merged_text += `${line}\n`);
       } else if (block.conflict) {
         block.conflict.a.forEach(line => merged_text += `${line}\n`);
         block.conflict.o.forEach(function(line) {});
           // merged_text += "#{line}\n" 
-        return block.conflict.b.forEach(line => merged_text += `${line}\n`);
+        block.conflict.b.forEach(line => merged_text += `${line}\n`);
       }
     });
 
@@ -433,13 +438,13 @@ class PageEditPanel extends AbsolutePanel {
     this.body_el.val(merged_text);
     this.lock_version = (this.page.lock_version = lock_version);
     (new ConflictDialog()).show().always(() => {
-      return delay(100, () => {
+      delay(100, () => {
         this.body_el.focus();
         body_el.selectionStart = cur;
-        return body_el.selectionEnd = cur;
+        body_el.selectionEnd = cur;
       });
     });
-    return analytics.event({ev: 'Edit', ea: 'MergeDialog'});
+    analytics.event({ev: 'Edit', ea: 'MergeDialog'});
   }
 
   preview() {
@@ -462,18 +467,18 @@ class PageEditPanel extends AbsolutePanel {
         }
         const lines_m = body.trim().match(/[\r\n]+/g); 
         const lines = lines_m ? lines_m.length : 0;
-        return this.preview_wordcount_el.html(`C: <strong>${chars}</strong>, W: <strong>${words}</strong>, L: <strong>${lines}</strong>`);
+        this.preview_wordcount_el.html(`C: <strong>${chars}</strong>, W: <strong>${words}</strong>, L: <strong>${lines}</strong>`);
       }
     }
   }
 
-  resize() { 
+  resize() {
     this.container_el.show();
     this.full_height(this.body_el, this.bottom_bar_el.height() + (device_type() === 'phone' ? 0 : 4) + 16 + 6);
     this.full_height(this.sidebar_pane_el, (device_type() === 'phone' ? 2 : 8));
     this.full_height(this.tab_pane_el, (device_type() === 'phone' ? 2 : 9));
     this.full_height(this.loading_el, 2);
-    return this.pane_handle_el.css('left', $(window).width()-this.sidebar_pane_el.width() - 90 - 24);
+    this.pane_handle_el.css('left', $(window).width()-this.sidebar_pane_el.width() - 90 - 24);
   }
 
   hotkeys(ev, keychar) {
@@ -487,8 +492,8 @@ class PageEditPanel extends AbsolutePanel {
       switch (keychar) {
         case 'I':
           ev.preventDefault();
-          return Backbone.history.navigate('notes', {trigger: true});
-
+          Backbone.history.navigate('notes', {trigger: true});
+          break;
         case 'T':
           ev.preventDefault();
           if (markdownToolbar) { return markdownToolbar.insertToday(); }
@@ -499,7 +504,7 @@ class PageEditPanel extends AbsolutePanel {
       switch (keychar) {
         case 'S':
           ev.preventDefault();
-          return this.save();
+          this.save();
       }
 
     } else if (ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
@@ -508,7 +513,7 @@ class PageEditPanel extends AbsolutePanel {
           if ($(':focus').attr('id') === 'edit-page-body') {
             if (this.body_el.isTextSelected()) {
               ev.preventDefault();
-              return this.body_el.removeToSelection(keycode2char[ev.keyCode]);
+              this.body_el.removeToSelection(keycode2char[ev.keyCode]);
             }
           }
           break;
@@ -520,11 +525,11 @@ class PageEditPanel extends AbsolutePanel {
           if ($(':focus').attr('id') === 'edit-page-body') {
             if (this.body_el.isTextSelected()) {
               ev.preventDefault();
-              return this.body_el.insertToSelection(keycode2char[ev.keyCode]);
+              this.body_el.insertToSelection(keycode2char[ev.keyCode]);
             } else {
               if (markdownToolbar && (ev.keyCode === 0x09)) {
                 ev.preventDefault();
-                return markdownToolbar.insertTab();
+                markdownToolbar.insertTab();
               }
             }
           }
@@ -533,7 +538,7 @@ class PageEditPanel extends AbsolutePanel {
     }
   }
 
-  load_draft() { 
+  load_draft() {
     const draft_key = sessionStorage['page-edit-key'];
     if (typeof draft_key !== 'undefined') {
       const draft_body = sessionStorage['page-edit-body'];
@@ -544,22 +549,22 @@ class PageEditPanel extends AbsolutePanel {
         const use_draft = () => {
           this.body_el.val(this.page.body = draft_body);
           this.title_el.val(this.page.title = draft_title);
-          return this.lock_version = draft_lock_version==='' ? undefined : parseInt(draft_lock_version);
+          this.lock_version = draft_lock_version==='' ? undefined : parseInt(draft_lock_version);
         };
 
         if (is_app()) {
           delay(500, () => this.body_el.focus());
-          return use_draft();
+          use_draft();
         } else {
           const defer = (new LoadDraftDialog).show();
           defer.always(() => {
-            return delay(500, () => this.body_el.focus());
+            delay(500, () => this.body_el.focus());
           });
           defer.done(() => {
-            return use_draft();
+            use_draft();
           });
-          return defer.fail(() => {
-            return this.clear_draft();
+          defer.fail(() => {
+            this.clear_draft();
           });
         }
       }
@@ -572,9 +577,9 @@ class PageEditPanel extends AbsolutePanel {
         sessionStorage['page-edit-key'] = this.page.key || '';
         sessionStorage['page-edit-body'] = this.body_el.val();
         sessionStorage['page-edit-title'] = this.title_el.val();
-        return sessionStorage['page-edit-lock-version'] = this.page.lock_version || '';
+        sessionStorage['page-edit-lock-version'] = this.page.lock_version || '';
       } else {
-        return this.clear_draft();
+        this.clear_draft();
       }
     }
   }
@@ -583,14 +588,14 @@ class PageEditPanel extends AbsolutePanel {
     sessionStorage.removeItem('page-edit-key');
     sessionStorage.removeItem('page-edit-body');
     sessionStorage.removeItem('page-edit-title');
-    return sessionStorage.removeItem('page-edit-lock-version');
+    sessionStorage.removeItem('page-edit-lock-version');
   }
 
   autosave() {
     if (this.page && session.autosave() && !ModalDialog.is_active()) {
       const data = this.page.saved_data || { body: this.page.body, title: this.page.title };
       if ((data.body !== this.body_el.val()) || (data.title !== this.title_el.val())) {
-        return this.save();
+        this.save();
       }
     }
   }
@@ -607,7 +612,7 @@ class PageEditPanel extends AbsolutePanel {
     this.fontname_el.addClass(`edit_fontname_${localStorage.editor_fontname}`);
     this.body_el.addClass(`edit_fontname_${localStorage.editor_fontname}`);
     this.body_el.addClass(`edit_fontsize_${localStorage.editor_fontsize}`);
-    return this.fontname_el.text(fontname);
+    this.fontname_el.text(fontname);
   }
 }
 PageEditPanel.initClass();

@@ -10,7 +10,6 @@
 //= require app/panel
 //= require models/page
 //= require models/page_collection
-//= require shared/defer
 //= require shared/labeled_button
 //= require shared/relative_date
 // require shared/iscroll
@@ -55,7 +54,7 @@ class PageListPanel extends AbsolutePanel {
 
     if (this.tab_name === 'notes') {
       const request = authorizedRequest({url: "/pages/tags.json", type: 'GET'});
-      request.done(data => {
+      request.then(data => {
         let html = '';
         for (let tag of data) {
           html += `<a href=\"#notes/${encodeURIComponent(tag.name)}\">${escape_html(tag.name)}</a> `;
@@ -67,7 +66,7 @@ class PageListPanel extends AbsolutePanel {
 
   activate(tag) {
     this.tag = tag;
-    return Deferred(defer => {
+    return new Promise ((resolve) => {
       this.tab_el.tab('show');
       this.welcome_el.hide();
 
@@ -85,30 +84,30 @@ class PageListPanel extends AbsolutePanel {
         url += `tag=${encodeURIComponent(this.tag)}`;
       }
 
-      const load_defer = this.load(new PageCollection(url));
+      const load_promise = this.load(new PageCollection(url));
 
       if (this.tab_name === 'notes') {
         local_session(data => {
-          return load_defer.done(() => {
+          load_promise.then(() => {
             if ((data.pages_count === 0) && (this.collection.pages.length === 0)) {
               this.welcome_el.show();
             }
           });
         });
       }
-      return defer.resolve();
+      resolve();
     });
   }
 
   deactivate() {
-    return Deferred(defer => {
+    return new Promise((resolve) => {
       if (this.loading_collection) { this.loading_collection.abort(); }
       if (this.collection) { this.collection.abort(); }
       this.welcome_el.hide();
       this.container_el.hide();
       this.container_el.removeClass(`list-page-${this.tab_name}`);
       this.empty_message_el.hide();
-      return defer.resolve();
+      resolve();
     });
   }
 
@@ -154,11 +153,11 @@ class PageListPanel extends AbsolutePanel {
     $(`#list-page-archive-${page_key}`).hide();
     $(`#list-page-unarchive-${page_key}`).hide();
     const page = this.page_by_key(page_key);
-    const defer = page.archive();
-    defer.always(() => {
+    const promise = page.archive();
+    promise.finally(() => {
       $(`#list-page-moving-${page_key}`).hide();
     });
-    return defer.done(() => {
+    promise.then(() => {
       $(`#list-page-unarchive-${page_key}`).show();
       $.bootstrapGrowl("Archived", {type: 'success', delay:2000});
     });
@@ -169,11 +168,11 @@ class PageListPanel extends AbsolutePanel {
     $(`#list-page-archive-${page_key}`).hide();
     $(`#list-page-unarchive-${page_key}`).hide();
     const page = this.page_by_key(page_key);
-    const defer = page.unarchive();
-    defer.always(() => {
+    const promise = page.unarchive();
+    promise.finally(() => {
       $(`#list-page-moving-${page_key}`).hide();
     });
-    return defer.done(() => {
+    promise.then(() => {
       $(`#list-page-archive-${page_key}`).show();
       $.bootstrapGrowl("Move to Notes", {type: 'success', delay:2000});
     });
@@ -187,22 +186,22 @@ class PageListPanel extends AbsolutePanel {
     this.loading_collection.on('update', () => {
       this.render();
     });
-    const load_defer = this.loading_collection.load(true);
-    load_defer.always(() => {
-      this.loading_el.hide();
-      this.empty_message_el.hide();
-    });
-    load_defer.done(() => {
+    const load_promise = this.loading_collection.load(true);
+    load_promise.then(() => {
       this.collection = this.loading_collection;
       this.loading_collection = undefined;
       this.render();
     });
-    load_defer.fail(error => {
+    load_promise.catch((error) => {
       this.loading_collection = undefined;
       this.loading_error_text_el.text(error);
       this.loading_error_el.show();
     });
-    return load_defer;
+    load_promise.finally(() => {
+      this.loading_el.hide();
+      this.empty_message_el.hide();
+    });
+    return load_promise;
   }
 
   load_old_page() {
@@ -210,20 +209,20 @@ class PageListPanel extends AbsolutePanel {
     this.old_collection = this.collection.old_collection();
     if (this.old_collection) {
       this.auto_loading_el.show();
-      const load_defer = this.old_collection.load();
-      load_defer.done(() => {
+      const load_promise = this.old_collection.load();
+      load_promise.then(() => {
         this.collection.append(this.old_collection);
         this.render();
       });
-      load_defer.fail(error => {
+      load_promise.catch(error => {
         this.loading_error_text_el.text(error);
         this.loading_error_el.show();
-        return setTimeout(() => {
-          this.load_old_page;
+        setTimeout(() => {
+          this.load_old_page();
         }
         , 3 * 1000);
       });
-      return load_defer.always(() => {
+      load_promise.finally(() => {
         this.old_collection = undefined;
         this.auto_loading_el.hide();
       });
@@ -290,31 +289,39 @@ class PageListPanel extends AbsolutePanel {
       switch (keychar) {
         case 'E':
           ev.preventDefault();
-          return this.cursor_archive();
+          this.cursor_archive();
+          break;
         case 'N':
           ev.preventDefault();
-          return Backbone.history.navigate('new', {trigger: true});
+          Backbone.history.navigate('new', {trigger: true});
+          break;
         case 'I':
           ev.preventDefault();
-          return Backbone.history.navigate('notes', {trigger: true});
+          Backbone.history.navigate('notes', {trigger: true});
+          break;
         case 'D':
           ev.preventDefault();
-          return Backbone.history.navigate('archived', {trigger: true});
+          Backbone.history.navigate('archived', {trigger: true});
+          break;
         case 'C':
           ev.preventDefault();
-          return Backbone.history.navigate('calendar', {trigger: true});
+          Backbone.history.navigate('calendar', {trigger: true});
+          break;
         case 'S':
           ev.preventDefault();
-          return Backbone.history.navigate('search', {trigger: true});
+          Backbone.history.navigate('search', {trigger: true});
+          break;
         case 'J':
           ev.preventDefault();
-          return this.cursor_down();
+          this.cursor_down();
+          break;
         case 'K':
           ev.preventDefault();
-          return this.cursor_up();
+          this.cursor_up();
+          break;
         case 'O':
           ev.preventDefault();
-          return this.cursor_enter();
+          this.cursor_enter();
       }
     };
 
@@ -324,13 +331,15 @@ class PageListPanel extends AbsolutePanel {
       switch (ev.keyCode) {
         case 38: // up
           ev.preventDefault();
-          return this.cursor_up();
+          this.cursor_up();
+          break;
         case 40: // down
           ev.preventDefault();
-          return this.cursor_down();
+          this.cursor_down();
+          break;
         case 13: // enter
           ev.preventDefault();
-          return this.cursor_enter();
+          this.cursor_enter();
       }
     } else if (ev.ctrlKey || ev.metaKey || ev.altKey) {
       key_func();

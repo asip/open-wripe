@@ -18,7 +18,7 @@ class FeedbackDialog extends ModalDialog {
 
   action(action) {
     if (action === 'send') {
-      const data = { 
+      const data = {
         feedback: {
           subject: $("#feedback-subject").val(),
           body: $("#feedback-body").val()
@@ -28,16 +28,16 @@ class FeedbackDialog extends ModalDialog {
         data.feedback.image_data = $("#feedback-image-data").val();
       }
 
-      const defer = authorizedRequest({
+      const promise = authorizedRequest({
         url: '/feedbacks.json',
         method: 'POST',
         dataType: 'json',
         data
       });
-      defer.fail(() => {
+      promise.catch(() => {
         $.bootstrapGrowl("Failed to post feedback", {type: 'error'});
       });
-      return defer.done(() => {
+      promise.then(() => {
         $.bootstrapGrowl("Thank you for your feedback", {type: 'success'});
         $("#feedback-body").val('');
       });

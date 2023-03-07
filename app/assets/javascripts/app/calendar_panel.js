@@ -9,7 +9,6 @@
 //= require app/panel
 //= require models/page
 //= require models/page_collection
-//= require shared/defer
 //= require shared/labeled_button
 //= require shared/relative_date
 //= require messages
@@ -34,32 +33,32 @@ class CalendarPanel extends AbsolutePanel {
     $('#calendar-prev-month-button').click(() => this.prev_month());
     $('#calendar-next-month-button').click(() => this.next_month());
     $('#calendar-go').click(() => {
-      return this.load(this.year_el.val(), this.month_el.val());
+      this.load(this.year_el.val(), this.month_el.val());
     });
     this.generate_key_el.click(() => {
       this.request = authorizedRequest({url: "/calendar/generate_export_key.json", type: 'POST'});
-      return this.request.done(data => {
-        return load_session();
+      this.request.then(data => {
+        load_session();
       });
     });
   }
 
 
   activate() {
-    return Deferred(defer => {
+    return new Promise((resolve) => {
       this.tab_el.tab('show');
       this.no_items_el.hide();
       const today = new Date();
       this.load(today.getFullYear(), today.getMonth() + 1);
       this.container_el.show();
-      return defer.resolve();
+      resolve();
     });
   }
 
   deactivate() {
-    return Deferred(defer => {
+    return new Promise((resolve) => {
       this.container_el.hide();
-      return defer.resolve();
+      resolve();
     });
   }
 
@@ -74,16 +73,16 @@ class CalendarPanel extends AbsolutePanel {
 
     this.loading_el.show();
     this.loading_error_el.hide();
-    const load_defer = this.loading_collection.load(this.url);
-    load_defer.always(() => {
+    const load_promise = this.loading_collection.load(this.url);
+    load_promise.finally(() => {
       this.loading_el.hide();
     });
-    load_defer.done(() => {
+    load_promise.then(() => {
       this.collection = this.loading_collection;
       this.loading_collection = undefined;
       this.render();
     });
-    return load_defer.fail(error => {
+    load_promise.catch(error => {
       this.loading_collection = undefined;
       this.loading_error_text_el.text(error);
       this.loading_error_el.show();
@@ -98,7 +97,7 @@ class CalendarPanel extends AbsolutePanel {
       this.date_el.html(`${msg.english_months[data.month-1]} ${data.year}`);
       const cal = [];
       this.collection.pages.forEach(page => {
-        return page.dates.forEach(date => {
+        page.dates.forEach(date => {
           const day = parseInt(date.split(/[-\/]/)[2]);
           cal[day] = cal[day] || [];
           cal[day].push(page);
@@ -186,6 +185,7 @@ class CalendarPanel extends AbsolutePanel {
       case 37: // left
         ev.preventDefault();
         $('#calendar-prev-month-button').trigger('click');
+        break;
       case 39: // right
         ev.preventDefault();
         $('#calendar-next-month-button').trigger('click');

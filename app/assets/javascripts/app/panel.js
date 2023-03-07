@@ -5,7 +5,6 @@
  */
 //= require underscore/underscore
 //= require backbone/backbone
-//= require shared/defer
 //= require bootstrap2/docs/assets/js/bootstrap
 
 class AbsolutePanel {
@@ -22,14 +21,14 @@ class AbsolutePanel {
   }
 
   activate() {
-    return Deferred(defer => {
-      return defer.resolve();
+    return new Promise((resolve) => {
+      resolve();
     });
   }
 
   deactivate() {
-    return Deferred(defer => {
-      return defer.resolve();
+    return new Promise((resolve) => {
+      resolve();
     });
   }
 

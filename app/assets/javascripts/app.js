@@ -70,35 +70,35 @@ class AppRouter extends Backbone.Router {
   }
 
   index(tag) {
-    return this._select('index', tag);
+    this._select('index', tag);
   }
 
   archived() {
-    return this._select('archived');
+    this._select('archived');
   }
 
   search() {
-    return this._select('search');
+    this._select('search');
   }
 
   calendar() {
-    return this._select('calendar');
+    this._select('calendar');
   }
 
   new_page() {
-    return this._select('edit');
+    this._select('edit');
   }
 
   show_page(page_id) {
-    return this._select('edit', '0'+page_id);
+    this._select('edit', '0'+page_id);
   }
 
   edit_page(page_id) {
-    return this._select('edit', '0'+page_id);
+    this._select('edit', '0'+page_id);
   }
 
   update_hash(action) {
-    return Backbone.history.navigate(action, {trigger: false});
+    Backbone.history.navigate(action, {trigger: false});
   }
 
   _select(panel_name, option) {
@@ -107,8 +107,8 @@ class AppRouter extends Backbone.Router {
     this.current_fragment = Backbone.history.getFragment();
     const panel = this.panels[panel_name];
     const done = () => {
-      const defer = panel.activate(option);
-      defer.done(() => {
+      const promise = panel.activate(option);
+      promise.then(() => {
         if (this.current_panel) { this.current_panel.is_active = false; }
         this.current_panel = panel;
         this.current_panel.is_active = true;
@@ -116,7 +116,7 @@ class AppRouter extends Backbone.Router {
         $("#body-loading").hide();
         $("#app").removeClass("invisible");
       });
-      return defer.fail(() => {
+      promise.catch(() => {
         this.current_panel.is_active = false;
         this.current_panel.reactivate();
         this.current_fragment = this.prev_fragment;
@@ -127,19 +127,19 @@ class AppRouter extends Backbone.Router {
 
     if (this.current_panel) {
       this.current_panel.is_active = false;
-      const panel_defer = this.current_panel.deactivate();
-      panel_defer.done(() => {
+      const panel_promise = this.current_panel.deactivate();
+      panel_promise.then(() => {
         $(":focus").blur();
-        return done();
+        done();
       });
-      return panel_defer.fail(() => {
+      panel_promise.catch(() => {
         this.current_panel.is_active = true;
         this.current_fragment = this.prev_fragment;
         this.prev_fragment = undefined;
         this.update_hash(this.current_fragment);
       });
     } else {
-      return done();
+      done();
     }
   }
 
