@@ -92,7 +92,7 @@ class PageEditPanel extends AbsolutePanel {
   static initClass() {
     this.el = {
       new_tab: "#navigator-new",
-      edit_tab_nav: "#navigator-edit",
+      nav_edit_tab: "#navigator-edit",
       navigator: "#navigator",
 
       container: "#edit-page-container",
