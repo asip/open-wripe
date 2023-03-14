@@ -23,12 +23,20 @@ class LeaveConfirmationDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#page-edit-leave');
   }
+
+  constructor() {
+    super();
+  }
 }
 LeaveConfirmationDialog.initClass();
 
 class ConflictDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#page-edit-conflict');
+  }
+
+  constructor() {
+    super();
   }
 }
 ConflictDialog.initClass();
@@ -37,6 +45,10 @@ class LoadDraftDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#page-edit-load-draft');
   }
+
+  constructor() {
+    super();
+  }
 }
 LoadDraftDialog.initClass();
 
@@ -44,12 +56,20 @@ class LoadErrorDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#page-edit-load-error');
   }
+
+  constructor() {
+    super();
+  }
 }
 LoadErrorDialog.initClass();
 
 class LoadNotFoundDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#page-edit-load-notfound');
+  }
+
+  constructor() {
+    super();
   }
 }
 LoadNotFoundDialog.initClass();
@@ -69,12 +89,20 @@ class DeletePageDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#edit-page-delete');
   }
+
+  constructor() {
+    super();
+  }
 }
 DeletePageDialog.initClass();
 
 class DeletePageErrorDialog extends ModalDialog {
   static initClass() {
     this.prototype.el = $('#edit-page-delete-error');
+  }
+
+  constructor() {
+    super();
   }
 }
 DeletePageErrorDialog.initClass();
@@ -170,7 +198,7 @@ class PageEditPanel extends AbsolutePanel {
     });
 
     this.delete_button_el.click(() => {
-      return (new DeletePageDialog).show().done(() => {
+      return (new DeletePageDialog()).show().done(() => {
         if (this.page && ((this.page.key || '') !== '')) {
           const destroy_promise = this.page.destroy();
           destroy_promise.then(
@@ -556,7 +584,7 @@ class PageEditPanel extends AbsolutePanel {
           delay(500, () => this.body_el.focus());
           use_draft();
         } else {
-          const defer = (new LoadDraftDialog).show();
+          const defer = (new LoadDraftDialog()).show();
           defer.always(() => {
             delay(500, () => this.body_el.focus());
           });
