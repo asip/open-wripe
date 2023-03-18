@@ -532,7 +532,7 @@ class PageEditPanel extends AbsolutePanel {
       switch (keychar) {
         case 'S':
           ev.preventDefault();
-          this.save();
+          return this.save();
       }
 
     } else if (ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
@@ -623,7 +623,7 @@ class PageEditPanel extends AbsolutePanel {
     if (this.page && session.autosave() && !ModalDialog.is_active()) {
       const data = this.page.saved_data || { body: this.page.body, title: this.page.title };
       if ((data.body !== this.body_el.val()) || (data.title !== this.title_el.val())) {
-        this.save();
+        return this.save();
       }
     }
   }
