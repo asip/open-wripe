@@ -24,7 +24,7 @@ if (window.location.protocol !== "https:" && window.location.hostname.indexOf('w
     window.location.href = "https://wri.pe/"
 }
 </script>
-    <style type="text/css">
+    <style>
       body {
         font-family: "Avant Garde", Avantgarde, "Century Gothic", CenturyGothic, "AppleGothic", sans-serif;
         padding-top: 10px;
@@ -164,13 +164,13 @@ if (window.location.protocol !== "https:" && window.location.hostname.indexOf('w
   </head>
 
 <script>
-var authorizing = function() {
-  var el = document.getElementById('authorizing-panel');
+const authorizing = function() {
+  const el = document.getElementById('authorizing-panel');
   el.style.display = 'block';
   try {
     if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Mobile') > 0){
-      var body = $(document.body);
-      var panel = $('#authorizing-panel');
+      const body = $(document.body);
+      const panel = $('#authorizing-panel');
       panel.height(body.height());
       panel.width(body.width());
       panel.css('position', 'absolute');
@@ -182,8 +182,8 @@ var authorizing = function() {
   return true;
 };
 
-var hide_authorizing = function() {
-  var el = document.getElementById('authorizing-panel');
+const hide_authorizing = function() {
+  const el = document.getElementById('authorizing-panel');
   el.style.display = 'none';
 }
 </script>
@@ -390,7 +390,7 @@ function browserLanguage() {
 }
 
 function setLanguage(default_language, languages) {
-  var addCSSRule = (document.createStyleSheet)
+  const addCSSRule = (document.createStyleSheet)
     ?
     (function(sheet) {
       return function(selector, declaration) {
@@ -411,17 +411,17 @@ function setLanguage(default_language, languages) {
       return e.sheet;
     })(document.createElement('style')));
 
-  var removeCSSRule = function(ruleName) {
-    for(var i = 0; i < document.styleSheets.length; i++) {
-      var styleSheet = document.styleSheets[i];
-      var ii = 0
-      var cssRule = null;
+  const removeCSSRule = function(ruleName) {
+    for(let i = 0; i < document.styleSheets.length; i++) {
+      const styleSheet = document.styleSheets[i];
+      let ii = 0
+      let cssRule = null;
       do {
         styleSheet.crossOrigin = "anonymous";
         cssRule = (styleSheet.cssRules ? styleSheet.cssRules : styleSheet.rules)[ii];
         if(cssRule && cssRule.selectorText && cssRule.selectorText.toLowerCase() === ruleName) {
-            styleSheet.cssRules ? styleSheet.deleteRule(ii) : styleSheet.removeRule(ii);
-            return true;
+          styleSheet.cssRules ? styleSheet.deleteRule(ii) : styleSheet.removeRule(ii);
+          return true;
         }
         ii++;
       } while(cssRule);
@@ -429,14 +429,14 @@ function setLanguage(default_language, languages) {
     return false;
   }
 
-  var array_include = function(ary, v) {
-    for (var i in ary) {
+  const array_include = function(ary, v) {
+    for (let i in ary) {
       if (ary[i] === v) return true;
     }
     return false;
   };
 
-  var lang = browserLanguage();
+  const lang = browserLanguage();
   if(lang === default_language || !array_include(languages, lang)) return false;
 
   addCSSRule("." + default_language, "display: none;");

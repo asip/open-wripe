@@ -75,10 +75,10 @@ marked.Parser.prototype.tok = function() {
 };
 
 $(function() {
-  var contents = "<%=raw escape_javascript(@page.body) %>";
-  var tokens = marked.lexer(contents);
-  var headings = [], headings_html = [];
-  for(var i=0; i<tokens.length; ++i) {
+  const contents = "<%=raw escape_javascript(@page.body) %>";
+  const tokens = marked.lexer(contents);
+  let headings = [], headings_html = [];
+  for(let i=0; i<tokens.length; ++i) {
     if(tokens[i].type == 'heading') {
       if(tokens[i].depth <= 3) {
         tokens[i].el_id = 'heading-' + i;
