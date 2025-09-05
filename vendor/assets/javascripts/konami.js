@@ -58,7 +58,7 @@ var Konami = function() {
 	                load: function(link){
 									this.orig_keys = this.keys;
 	    							konami.addEvent(document,"touchmove",function(e){
-	                          if(e.touches.length == 1 && konami.iphone.capture==true){ 
+	                          if(e.touches.length == 1 && konami.iphone.capture==true){
 	                            var touch = e.touches[0]; 
 	                                konami.iphone.stop_x = touch.pageX;
 	                                konami.iphone.stop_y = touch.pageY;
@@ -86,7 +86,7 @@ var Konami = function() {
 	                        result = (this.tap==true) ? "TAP" : result;                     
 
 	                        if (result==this.keys[0]) this.keys = this.keys.slice(1,this.keys.length)
-	                        if (this.keys.length==0) { 
+	                        if (this.keys.length==0) {
 														this.keys=this.orig_keys;
 														this.code(link)
 														}

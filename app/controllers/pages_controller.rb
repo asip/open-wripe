@@ -181,7 +181,7 @@ class PagesController < ApplicationController
     @current_index ||= 0
     respond_to do |format|
       format.json do
-        render json: { 
+        render json: {
           index: @current_index,
           total_pages: @total_pages,
           old_pages_url: @current_index + @pages.count < @total_pages ? old_pages_url.call : nil,

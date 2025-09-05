@@ -5,7 +5,7 @@ class SettingsController < ApplicationController
     respond_to do |format|
       format.html
       format.json do
-        render json: { 
+        render json: {
           use_dropbox: !!current_user.dropbox_user,
           use_evernote: !!current_user.evernote_user
         }
@@ -31,7 +31,7 @@ class SettingsController < ApplicationController
     respond_to do |format|
       format.html { redirect_to :show }
       format.json do
-        render json: { 
+        render json: {
           use_dropbox: !!current_user.dropbox_user,
           use_evernote: !!current_user.evernote_user
         }

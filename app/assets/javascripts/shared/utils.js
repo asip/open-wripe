@@ -10,7 +10,7 @@ const userAgent = window.navigator.userAgent.toLowerCase();
 let _device_type = 'desktop';
 if (userAgent.indexOf('ipad') > 0) {
   _device_type = 'tablet';
-} else if ((userAgent.indexOf('iphone') > 0) || (userAgent.indexOf('ipod') > 0)) { 
+} else if ((userAgent.indexOf('iphone') > 0) || (userAgent.indexOf('ipod') > 0)) {
   _device_type = 'phone'; 
 } else if (userAgent.indexOf('android') > 0) {
   _device_type = 'android'; 

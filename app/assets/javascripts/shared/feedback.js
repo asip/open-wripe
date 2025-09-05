@@ -18,7 +18,7 @@ class FeedbackDialog extends ModalDialog {
 
   action(action) {
     if (action === 'send') {
-      const data = { 
+      const data = {
         feedback: {
           subject: $("#feedback-subject").val(),
           body: $("#feedback-body").val()

@@ -2,7 +2,7 @@ class StatsController < ApplicationController
   def index
     respond_to do |format|
       format.json do
-        render json: { 
+        render json: {
           users: User.where(active: true).count,
           pages: Page.count,
           page_histories: PageHistory.count,

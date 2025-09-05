@@ -35,7 +35,7 @@ class MessagesController < ApplicationController
     @current_index ||= 0
     respond_to do |format|
       format.json do
-        render json: { 
+        render json: {
           index: @current_index,
           total_messages: @total_messages,
           old_messages_url: @current_index + @messages.count < @total_messages ? old_messages_url.call : nil,

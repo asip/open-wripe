@@ -496,7 +496,7 @@ class PageEditPanel extends AbsolutePanel {
     }
   }
 
-  resize() { 
+  resize() {
     this.container_el.show();
     this.full_height(this.body_el, this.bottom_bar_el.height() + (device_type() === 'phone' ? 0 : 4) + 16 + 6);
     this.full_height(this.sidebar_pane_el, (device_type() === 'phone' ? 2 : 8));
@@ -562,7 +562,7 @@ class PageEditPanel extends AbsolutePanel {
     }
   }
 
-  load_draft() { 
+  load_draft() {
     const draft_key = sessionStorage['page-edit-key'];
     if (typeof draft_key !== 'undefined') {
       const draft_body = sessionStorage['page-edit-body'];

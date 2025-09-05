@@ -115,7 +115,7 @@ class Page {
         this.request = undefined;
         if (xhr.status === 409) { // Conflict
           let data;
-          try { 
+          try {
             data = JSON.parse(xhr.responseText);
           } catch (err) {
             data = undefined;

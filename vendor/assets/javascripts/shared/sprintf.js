@@ -549,7 +549,7 @@ jQuery.fn.vformat = function jQuery_fn_vformat( args ) {
   if( arguments.length == 0 ) {
     throw "Not enough arguments for sprintf";
   }
-  return this.each( function() { 
+  return this.each( function() {
       self = jQuery(this);
       self.html(  jQuery.vsprintf( self.html(), args ) )
     }
@@ -573,7 +573,7 @@ jQuery.fn.format = function jQuery_fn_format() {
     throw "Not enough arguments for sprintf";
   }
   var args = Array.prototype.slice.call(arguments);
-  return this.each( function() { 
+  return this.each( function() {
       self = jQuery(this);
       self.html(  jQuery.vsprintf( self.html(), args ) )
     }
